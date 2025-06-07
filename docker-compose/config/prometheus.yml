@@ -1,0 +1,65 @@
+scrape_configs:
+  - job_name: 'prometheus'
+    scrape_interval: 1m
+    static_configs:
+      - targets: ['localhost:9090']
+  
+  - job_name: 'grafana'
+    scrape_interval: 1m
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['grafana:3000']
+  
+  - job_name: 'gateway-service'
+    scrape_interval: 1m
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['gateway-service:9092']
+  
+  - job_name: 'elastic-query-service'
+    scrape_interval: 1m
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['elastic-query-service:8183']
+  
+  # - job_name: 'elastic-query-web-client'
+  #   scrape_interval: 1m
+  #   metrics_path: '/actuator/prometheus'
+  #   static_configs:
+  #     - targets: ['elastic-query-web-client:8184']
+  
+  - job_name: 'kafka-streams-service'
+    scrape_interval: 1m
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['kafka-streams-service:8187']
+  
+  - job_name: 'analytics-service'
+    scrape_interval: 1m
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['analytics-service:8188']
+  
+  # - job_name: 'twitter-to-kafka-service'
+  #   scrape_interval: 1m
+  #   metrics_path: '/actuator/prometheus'
+  #   static_configs:
+  #     - targets: ['twitter-to-kafka-service:5005']
+  
+  # - job_name: 'kafka-to-elastic-service'
+  #   scrape_interval: 1m
+  #   metrics_path: '/actuator/prometheus'
+  #   static_configs:
+  #     - targets: ['kafka-to-elastic-service:5006']
+  
+  # - job_name: 'config-server'
+  #   scrape_interval: 1m
+  #   metrics_path: '/actuator/prometheus'
+  #   static_configs:
+  #     - targets: ['config-server:8888']
+  
+  # - job_name: 'discovery-service'
+  #   scrape_interval: 1m
+  #   metrics_path: '/actuator/prometheus'
+  #   static_configs:
+  #     - targets: ['discovery-service:8761']
