@@ -34,6 +34,31 @@ eureka:
   client:
     serviceUrl:
       defaultZone: http://discovery-service-1:8761/eureka/,http://discovery-service-2:8762/eureka/
+
+
+   # Zipkin configuration for Spring Boot 3.x
+  kafka:
+    bootstrap-servers: localhost:9092
+
+# Management endpoints for tracing (Spring Boot 3.x style)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,tracing
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411
+
+# Zipkin reporter configuration
+zipkin:
+  sender:
+    type: kafka
+
+
 log:
   app-name: discovery-service-1
 

@@ -103,8 +103,6 @@ services:
       - "MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411"
     networks:
       - ${GLOBAL_NETWORK:-services}
-  # Updated Docker Compose with separate internal/external Keycloak URLs
-
   elastic-query-service:
     image: ${GROUP_ID}/elastic.query.service:${SERVICE_VERSION:-latest}
     ports:
@@ -118,7 +116,6 @@ services:
     entrypoint: ["check-config-server-started.sh"]
     depends_on:
       - config-server
-      - keycloak-authorization-server
       - elastic-1
       - elastic-2
       - elastic-3
@@ -131,17 +128,9 @@ services:
       - "SERVER_PORT=8183"
       - "SERVER_SERVLET_CONTEXT-PATH=/"
       - "SPRING_CLOUD_CONFIG_URI=http://config-server:8888"
-
-      # INTERNAL URLs - for server-to-server communication (JWT validation, etc.)
       - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm"
       - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm/protocol/openid-connect/certs"
-
-      # EXTERNAL URLs - for browser redirects and client-side OAuth flows
-      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER-URI=http://localhost:9091/auth/realms/microservices-realm"
-      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN-URI=http://localhost:9091/auth/realms/microservices-realm/protocol/openid-connect/token"
-      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION-URI=http://localhost:9091/auth/realms/microservices-realm/protocol/openid-connect/auth"
-      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER-INFO-URI=http://localhost:9091/auth/realms/microservices-realm/protocol/openid-connect/userinfo"
-
+      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm/protocol/openid-connect/token"
       - "SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/postgres?currentSchema=public&binaryTransfer=true&reWriteBatchedInserts=true"
       - "ELASTIC-QUERY-SERVICE_QUERY-FROM-KAFKA-STATE-STORE_URI=http://gateway-service/kafka-streams-service/get-word-count-by-word/{word}"
       - "ELASTIC-QUERY-SERVICE_QUERY-FROM-ANALYTICS-DATABASE_URI=http://gateway-service/analytics-service/get-word-count-by-word/{word}"
@@ -156,7 +145,6 @@ services:
       - "MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411"
     networks:
       - ${GLOBAL_NETWORK:-services}
-
   elastic-query-web-client:
     image: ${GROUP_ID}/elastic.query.web.client:${SERVICE_VERSION:-latest}
     ports:
@@ -170,7 +158,6 @@ services:
     entrypoint: ["check-config-server-started.sh"]
     depends_on:
       - config-server
-      - keycloak-authorization-server
     environment:
       - "JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5010 -Xms128m -Xmx256m"
       - "LOGGING_LEVEL_COM_MICROSERVICES_DEMO=info"
@@ -182,18 +169,8 @@ services:
       - "ELASTIC-QUERY-WEB-CLIENT_WEB-CLIENT_INSTANCES_0_ID=elastic-query-service"
       - "ELASTIC-QUERY-WEB-CLIENT_WEB-CLIENT_INSTANCES_0_HOST=elastic-query-service"
       - "ELASTIC-QUERY-WEB-CLIENT_WEB-CLIENT_INSTANCES_0_PORT=8183"
-
-      # EXTERNAL URL - for browser redirects (this is crucial for web clients)
-      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER-URI=http://localhost:9091/auth/realms/microservices-realm"
-      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN-URI=http://localhost:9091/auth/realms/microservices-realm/protocol/openid-connect/token"
-      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION-URI=http://localhost:9091/auth/realms/microservices-realm/protocol/openid-connect/auth"
-      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER-INFO-URI=http://localhost:9091/auth/realms/microservices-realm/protocol/openid-connect/userinfo"
-
-      # INTERNAL URL - for server-side token validation (if needed)
-      - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm"
-      - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm/protocol/openid-connect/certs"
-
-      - "SECURITY_LOGOUT-SUCCESS-URL=http://localhost:8184/elastic-query-web-client"
+      - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm"
+      - "SECURITY_LOGOUT-SUCCESS-URL=http://elastic-query-web-client:8184/elastic-query-web-client"
       - "SECURITY_DEFAULT-CLIENT-REGISTRATION-ID=keycloak"
       - "LOG_APP-NAME=elastic-query-web-client"
       - "EUREKA_CLIENT_SERVICE-URL_DEFAULT-ZONE=http://discovery-service:8761/eureka/"
@@ -204,45 +181,67 @@ services:
       - "MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411"
     networks:
       - ${GLOBAL_NETWORK:-services}
-
   kafka-streams-service:
     image: ${GROUP_ID}/kafka.streams.service:${SERVICE_VERSION:-latest}
     ports:
-      - "5012:5012"
-      - "8187:8187"
+    - "5012:5012"
+    - "8187:8187"
     volumes:
-      - "./docker-logs:/workspace/kafka-streams-service/logs"
-      - "./check-config-server-started.sh:/usr/local/bin/check-config-server-started.sh"
-      - "./check-keycloak-server-started.sh:/usr/local/bin/check-keycloak-server-started.sh"
+    - "./docker-logs:/workspace/kafka-streams-service/logs"
+    - "./check-config-server-started.sh:/usr/local/bin/check-config-server-started.sh"
+    - "./check-keycloak-server-started.sh:/usr/local/bin/check-keycloak-server-started.sh"
     user: root
     entrypoint: ["check-config-server-started.sh"]
     depends_on:
-      - config-server
-      - keycloak-authorization-server
+    - config-server
+    - zipkin
     environment:
-      - "JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5012 -Xms128m -Xmx256m"
-      - "LOGGING_LEVEL_COM_MICROSERVICES_DEMO=error"
-      - "LOGGING_LEVEL_ROOT=error"
-      - "SERVER_PORT=8187"
-      - "SERVER_SERVLET_CONTEXT-PATH=/"
-      - "SPRING_CLOUD_CONFIG_URI=http://config-server:8888"
+    # Java and JVM settings
+    - "JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5012 -Xms128m -Xmx256m"
 
-      # INTERNAL URLs - for server-to-server communication (API services typically only need this)
-      - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm"
-      - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm/protocol/openid-connect/certs"
+    # Spring Profile
+    - "SPRING_PROFILES_ACTIVE=docker"
 
-      - "KAFKA-CONFIG_BOOTSTRAP-SERVERS=kafka-broker-1:9092, kafka-broker-2:9092, kafka-broker-3:9092"
-      - "KAFKA-CONFIG_SCHEMA-REGISTRY-URL=http://schema-registry:8081"
-      - "LOG_APP-NAME=kafka-streams-service"
-      - "EUREKA_CLIENT_SERVICE-URL_DEFAULT-ZONE=http://discovery-service:8761/eureka/"
-      - "ENCRYPT_KEY=${ENCRYPT_KEY}"
-      - "SPRING_ZIPKIN_SENDER_TYPE=kafka"
-      - "SPRING_KAFKA_BOOTSTRAP-SERVERS=kafka-broker-1:9092, kafka-broker-2:9092, kafka-broker-3:9092"
-      - "SPRING_SLEUTH_SAMPLER_PROBABILITY=1.0"
-      - "MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411"
-    networks:
-      - ${GLOBAL_NETWORK:-services}
+    # Logging configuration
+    - "LOGGING_LEVEL_COM_MICROSERVICES_DEMO=${LOGGING_LEVEL_COM_MICROSERVICES_DEMO:-error}"
+    - "LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT:-error}"
+    - "LOGGING_LEVEL_KAFKA=${LOGGING_LEVEL_KAFKA:-INFO}"
+    - "LOGGING_LEVEL_TRACING=${LOGGING_LEVEL_TRACING:-INFO}"
+    - "LOGGING_LEVEL_ZIPKIN=${LOGGING_LEVEL_ZIPKIN:-INFO}"
+    - "LOGGING_LEVEL_BRAVE=${LOGGING_LEVEL_BRAVE:-INFO}"
 
+    # Server configuration
+    - "SERVER_PORT=8187"
+    - "SERVER_SERVLET_CONTEXT_PATH=/"
+
+    # Spring Cloud Config
+    - "SPRING_CLOUD_CONFIG_URI=http://config-server:8888"
+
+    # OAuth2 Security
+    - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm"
+    - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm/protocol/openid-connect/certs"
+
+    # Kafka Configuration
+    - "KAFKA_CONFIG_BOOTSTRAP_SERVERS=kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092"
+    - "KAFKA_CONFIG_SCHEMA_REGISTRY_URL=http://schema-registry:8081"
+    - "SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092"
+
+    # Kafka Streams Configuration
+    - "KAFKA_STREAMS_STATE_FILE_LOCATION=/tmp/kafka-streaming-state"
+
+    # Eureka Discovery
+    - "EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE=http://discovery-service:8761/eureka/"
+
+    # Zipkin and Tracing Configuration
+    - "MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411/api/v2/spans"
+    - "MANAGEMENT_TRACING_SAMPLING_PROBABILITY=1.0"
+
+    # Application name and encryption
+    - "LOG_APP_NAME=kafka-streams-service"
+    - "ENCRYPT_KEY=${ENCRYPT_KEY}"
+
+  networks:
+    - ${GLOBAL_NETWORK:-services}
   analytics-service:
     image: ${GROUP_ID}/analytics.service:${SERVICE_VERSION:-latest}
     ports:
@@ -256,7 +255,6 @@ services:
     entrypoint: ["check-config-server-started.sh"]
     depends_on:
       - config-server
-      - keycloak-authorization-server
     environment:
       - "JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5013 -Xms128m -Xmx256m"
       - "LOGGING_LEVEL_COM_MICROSERVICES_DEMO=info"
@@ -264,11 +262,8 @@ services:
       - "SERVER_PORT=8188"
       - "SERVER_SERVLET_CONTEXT-PATH=/"
       - "SPRING_CLOUD_CONFIG_URI=http://config-server:8888"
-
-      # INTERNAL URLs - for server-to-server communication (API services typically only need this)
       - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm"
       - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm/protocol/openid-connect/certs"
-
       - "SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/postgres?currentSchema=analytics&binaryTransfer=true&reWriteBatchedInserts=true"
       - "KAFKA-CONFIG_BOOTSTRAP-SERVERS=kafka-broker-1:9092, kafka-broker-2:9092, kafka-broker-3:9092"
       - "KAFKA-CONFIG_SCHEMA-REGISTRY-URL=http://schema-registry:8081"

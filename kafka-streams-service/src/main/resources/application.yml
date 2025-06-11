@@ -4,12 +4,14 @@ spring:
   profiles:
     active: kafka_streams
   config:
-    import: 'configserver:'
+    import: "configserver:"
   cloud:
     config:
       name: kafka-streams-service,config-client
       username: spring_cloud_user
-      password: '1234'
+      password: "1234"
+  kafka:
+    bootstrap-servers: localhost:9092
 
 eureka:
   client:
@@ -19,5 +21,11 @@ eureka:
     lease-expiration-duration-in-seconds: 5
     lease-renewal-interval-in-seconds: 2
 
-log:
-  app-name: kafka-streams-service
+
+
+logging:
+  level:
+    org.springframework.kafka: DEBUG
+    io.micrometer.tracing: DEBUG
+    zipkin2.reporter: DEBUG
+    brave: DEBUG
