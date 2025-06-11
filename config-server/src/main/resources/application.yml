@@ -16,7 +16,6 @@ spring:
           uri: https://github.com/Solano204/spring-cloud-config-server-repository
           default-label: main
           username: Solano204
-          password: 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
           clone-on-start: true
       fail-fast: true
   security:
