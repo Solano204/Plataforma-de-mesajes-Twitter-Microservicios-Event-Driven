@@ -1,0 +1,56 @@
+server:
+  port: 8888
+
+logging:
+  level:
+    ROOT: INFO
+    org.springframework.cloud.config: DEBUG
+
+spring:
+  application:
+    name: configserver
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/Solano204/spring-cloud-config-server-repository
+          default-label: main
+          username: ${GIT_USERNAME}  # Set in environment
+          password: ${GIT_PASSWORD}  # Never commit this!
+          clone-on-start: true
+      fail-fast: true
+  security:
+    user:
+      name: spring_cloud_user
+      password: '1234'
+
+# Use environment variable for encryption key
+encrypt:
+  key: ${ENCRYPT_KEY:defaultEncryptionKey123}
+
+
+  # Zipkin configuration for Spring Boot 3.x
+  kafka:
+    bootstrap-servers: localhost:9092
+
+# Management endpoints for tracing (Spring Boot 3.x style)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,tracing
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411
+
+# Zipkin reporter configuration
+zipkin:
+  sender:
+    type: kafka
+
+log:
+  app-name: config-server
+
