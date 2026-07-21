@@ -24,7 +24,7 @@ public class ElasticQueryWebClientErrorHandler {
     public String handle(AccessDeniedException e, Model model) {
         LOG.error("Access denied exception!");
         model.addAttribute("error", HttpStatus.UNAUTHORIZED.getReasonPhrase());
-        model.addAttribute("error_description, You are not authorized to access this resource!");
+        model.addAttribute("error_description", "You are not authorized to access this resource!");
         return "error";
     }
 

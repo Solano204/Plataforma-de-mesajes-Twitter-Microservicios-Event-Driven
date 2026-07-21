@@ -9,29 +9,27 @@ logging:
 spring:
   application:
     name: configserver
+  profiles:
+    active: native
   cloud:
     config:
       server:
-        git:
-          uri: https://github.com/Solano204/spring-cloud-config-server-repository
-          default-label: main
-          username: ${GIT_USERNAME}  # Set in environment
-          password: ${GIT_PASSWORD}  # Never commit this!
-          clone-on-start: true
+        # Default backend: local file-based repo checked into this project (config-server-repository/).
+        # No external dependency, works offline. Switch to the 'git' profile below to serve config
+        # from a real git remote instead.
+        native:
+          search-locations: file:./config-server-repository,file:../config-server-repository
       fail-fast: true
   security:
     user:
       name: spring_cloud_user
       password: '1234'
+  kafka:
+    bootstrap-servers: localhost:9092
 
 # Use environment variable for encryption key
 encrypt:
   key: ${ENCRYPT_KEY:defaultEncryptionKey123}
-
-
-  # Zipkin configuration for Spring Boot 3.x
-  kafka:
-    bootstrap-servers: localhost:9092
 
 # Management endpoints for tracing (Spring Boot 3.x style)
 management:
@@ -53,4 +51,21 @@ zipkin:
 
 log:
   app-name: config-server
+
+---
+# Optional git-backed profile. Activate with SPRING_PROFILES_ACTIVE=git plus GIT_USERNAME/GIT_PASSWORD
+# pointing at a real, reachable config repo. Not active by default.
+spring:
+  config:
+    activate:
+      on-profile: git
+  cloud:
+    config:
+      server:
+        git:
+          uri: ${CONFIG_GIT_URI}
+          default-label: main
+          username: ${GIT_USERNAME}
+          password: ${GIT_PASSWORD}
+          clone-on-start: true
 

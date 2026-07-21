@@ -55,18 +55,11 @@ public class KafkaStreamsRunner implements StreamsRunner<String, Long> {
 
     @Override
     public void start() {
-        final Map<String, String> serdeConfig = Collections.singletonMap(
-                kafkaConfigData.getSchemaRegistryUrlKey(),
-                kafkaConfigData.getSchemaRegistryUrl());
-
-        final StreamsBuilder streamsBuilder = new StreamsBuilder();
-
-        final KStream<Long, TwitterAvroModel> twitterAvroModelKStream = getTwitterAvroModelKStream(serdeConfig,
-                streamsBuilder);
-
-        createTopology(twitterAvroModelKStream, serdeConfig);
-
-        startStreaming(streamsBuilder);
+        Topology topology = buildTopology().build();
+        LOG.info("Defined topology: {}", topology.describe());
+        kafkaStreams = new KafkaStreams(topology, streamsConfiguration);
+        kafkaStreams.start();
+        LOG.info("Kafka streaming started..");
     }
 
     @Override
@@ -94,31 +87,41 @@ public class KafkaStreamsRunner implements StreamsRunner<String, Long> {
         }
     }
 
-    private void startStreaming(StreamsBuilder streamsBuilder) {
-        final Topology topology = streamsBuilder.build();
-        LOG.info("Defined topology: {}", topology.describe());
-        kafkaStreams = new KafkaStreams(topology, streamsConfiguration);
-        kafkaStreams.start();
-        LOG.info("Kafka streaming started..");
+    /**
+     * Pure topology-building logic - word-count the incoming tweet text stream and
+     * publish the counts to the analytics topic. Deliberately separated from starting
+     * the actual KafkaStreams client so it can be exercised with a TopologyTestDriver
+     * without a live broker or schema registry.
+     */
+    StreamsBuilder buildTopology() {
+        final Map<String, String> serdeConfig = Collections.singletonMap(
+                kafkaConfigData.getSchemaRegistryUrlKey(),
+                kafkaConfigData.getSchemaRegistryUrl());
+
+        final StreamsBuilder streamsBuilder = new StreamsBuilder();
+        final KStream<Long, TwitterAvroModel> twitterAvroModelKStream =
+                getTwitterAvroModelKStream(serdeConfig, streamsBuilder);
+        createTopology(twitterAvroModelKStream, serdeConfig);
+        return streamsBuilder;
     }
 
     private void createTopology(KStream<Long, TwitterAvroModel> twitterAvroModelKStream,
                             Map<String, String> serdeConfig) {
-    Pattern pattern = Pattern.compile(REGEX, Pattern.UNICODE_CHARACTER_CLASS);
+        Pattern pattern = Pattern.compile(REGEX, Pattern.UNICODE_CHARACTER_CLASS);
 
-    Serde<TwitterAnalyticsAvroModel> serdeTwitterAnalyticsAvroModel = getSerdeAnalyticsModel(serdeConfig);
+        Serde<TwitterAnalyticsAvroModel> serdeTwitterAnalyticsAvroModel = getSerdeAnalyticsModel(serdeConfig);
 
-    twitterAvroModelKStream
-            .flatMapValues(value -> Arrays.asList(pattern.split(value.getText().toLowerCase())))
-            .groupBy((key, word) -> word)
-            .count(Materialized
-                    .<String, Long, KeyValueStore<Bytes, byte[]>>as(kafkaStreamsConfigData.getWordCountStoreName()))
-            .toStream()
-            .map(mapToAnalyticsModel())
-            // Fix: Specify the correct serializers for the output topic
-            .to(kafkaStreamsConfigData.getOutputTopicName(), 
-                Produced.with(Serdes.String(), serdeTwitterAnalyticsAvroModel));
-}
+        twitterAvroModelKStream
+                .flatMapValues(value -> Arrays.asList(pattern.split(value.getText().toLowerCase())))
+                .groupBy((key, word) -> word)
+                .count(Materialized
+                        .<String, Long, KeyValueStore<Bytes, byte[]>>as(kafkaStreamsConfigData.getWordCountStoreName()))
+                .toStream()
+                .map(mapToAnalyticsModel())
+                // Fix: Specify the correct serializers for the output topic
+                .to(kafkaStreamsConfigData.getOutputTopicName(),
+                        Produced.with(Serdes.String(), serdeTwitterAnalyticsAvroModel));
+    }
 
     private KeyValueMapper<String, Long, KeyValue<String, TwitterAnalyticsAvroModel>> mapToAnalyticsModel() {
         return (word, count) -> {

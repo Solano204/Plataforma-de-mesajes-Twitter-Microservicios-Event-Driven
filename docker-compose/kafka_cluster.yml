@@ -1,4 +1,3 @@
-version: '3.7'
 
 services:
   zookeeper:
@@ -14,7 +13,7 @@ services:
       ZOOKEEPER_SYNC_LIMIT: 2
       ZOOKEEPER_SERVERS: zookeeper:2888:3888
     networks:
-      - kafka-network
+      - ${GLOBAL_NETWORK:-services}
 
   kafka-broker-1:
     image: confluentinc/cp-kafka:${KAFKA_VERSION}
@@ -30,7 +29,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,LISTENER_LOCAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
     networks:
-      - kafka-network
+      - ${GLOBAL_NETWORK:-services}
 
   kafka-broker-2:
     image: confluentinc/cp-kafka:${KAFKA_VERSION}
@@ -47,7 +46,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_COMPRESSION_TYPE: producer
     networks:
-      - kafka-network
+      - ${GLOBAL_NETWORK:-services}
 
   kafka-broker-3:
     image: confluentinc/cp-kafka:${KAFKA_VERSION}
@@ -64,7 +63,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_COMPRESSION_TYPE: producer
     networks:
-      - kafka-network
+      - ${GLOBAL_NETWORK:-services}
 
   schema-registry:
     image: confluentinc/cp-schema-registry:${KAFKA_VERSION}
@@ -80,7 +79,7 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka-broker-1:9092
       SCHEMA_REGISTRY_LISTENERS: http://schema-registry:8081
     networks:
-      - kafka-network
+      - ${GLOBAL_NETWORK:-services}
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -94,8 +93,4 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-broker-1:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
     networks:
-      - kafka-network
-
-networks:
-  kafka-network:
-    driver: bridge
+      - ${GLOBAL_NETWORK:-services}

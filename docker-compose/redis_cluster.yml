@@ -1,4 +1,3 @@
-version: '3.7'
 
 services:
   redis-master:
@@ -8,7 +7,7 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - redis-network
+      - ${GLOBAL_NETWORK:-services}
 
   redis-slave:
     image: redis:${REDIS_VERSION:-latest}
@@ -18,8 +17,4 @@ services:
     depends_on:
       - redis-master
     networks:
-      - redis-network
-
-networks:
-  redis-network:
-    driver: bridge
+      - ${GLOBAL_NETWORK:-services}

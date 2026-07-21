@@ -413,6 +413,24 @@
 					<release>17</release>
 				</configuration>
 			</plugin>
+			<!--
+				Integration tests (**/*IT.java) require the live stack (config-server, Eureka,
+				Kafka, Postgres, Keycloak - see docker-compose) and are deliberately NOT run by
+				surefire/mvn install. Run them explicitly with `mvn verify` against a running stack.
+			-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>3.1.2</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 		<pluginManagement>
 			<plugins>

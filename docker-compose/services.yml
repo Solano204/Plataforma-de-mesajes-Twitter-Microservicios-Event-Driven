@@ -1,4 +1,3 @@
-version: "3.7"
 services:
   keycloak-authorization-server:
     image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-latest}
@@ -15,6 +14,8 @@ services:
       - "DB_USER=keycloak"
       - "DB_SCHEMA=keycloak"
       - "DB_PASSWORD=keycloak"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - ${GLOBAL_NETWORK:-services}
   twitter-to-kafka-service:
@@ -132,8 +133,8 @@ services:
       - "SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm/protocol/openid-connect/certs"
       - "SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN-URI=http://keycloak-authorization-server:9091/auth/realms/microservices-realm/protocol/openid-connect/token"
       - "SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/postgres?currentSchema=public&binaryTransfer=true&reWriteBatchedInserts=true"
-      - "ELASTIC-QUERY-SERVICE_QUERY-FROM-KAFKA-STATE-STORE_URI=http://gateway-service/kafka-streams-service/get-word-count-by-word/{word}"
-      - "ELASTIC-QUERY-SERVICE_QUERY-FROM-ANALYTICS-DATABASE_URI=http://gateway-service/analytics-service/get-word-count-by-word/{word}"
+      - "ELASTIC-QUERY-SERVICE_QUERY-FROM-KAFKA-STATE-STORE_URI=http://gateway-service:9092/kafka-streams-service/get-word-count-by-word/{word}"
+      - "ELASTIC-QUERY-SERVICE_QUERY-FROM-ANALYTICS-DATABASE_URI=http://gateway-service:9092/analytics-service/get-word-count-by-word/{word}"
       - "ELASTIC-QUERY-SERVICE_WEBCLIENT_QUERY-TYPE=ANALYTICS_DATABASE"
       - "LOG_APP-NAME=elastic-query-service"
       - "EUREKA_CLIENT_SERVICE-URL_DEFAULT-ZONE=http://discovery-service:8761/eureka/"
@@ -143,6 +144,8 @@ services:
       - "SPRING_SLEUTH_SAMPLER_PROBABILITY=1.0"
       - "SPRING_DATA_ELASTICSEARCH_CLIENT_REACTIVE_ENDPOINTS=elastic-1:9200"
       - "MANAGEMENT_ZIPKIN_TRACING_ENDPOINT=http://zipkin:9411"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - ${GLOBAL_NETWORK:-services}
   elastic-query-web-client:
@@ -165,7 +168,7 @@ services:
       - "SERVER_PORT=8184"
       - "SERVER_SERVLET_CONTEXT-PATH=/elastic-query-web-client"
       - "SPRING_CLOUD_CONFIG_URI=http://config-server:8888"
-      - "ELASTIC-QUERY-WEB-CLIENT_WEB-CLIENT_BASE-URL=http://gateway-service/elastic-query-service/documents"
+      - "ELASTIC-QUERY-WEB-CLIENT_WEB-CLIENT_BASE-URL=http://gateway-service:9092/elastic-query-service/documents"
       - "ELASTIC-QUERY-WEB-CLIENT_WEB-CLIENT_INSTANCES_0_ID=elastic-query-service"
       - "ELASTIC-QUERY-WEB-CLIENT_WEB-CLIENT_INSTANCES_0_HOST=elastic-query-service"
       - "ELASTIC-QUERY-WEB-CLIENT_WEB-CLIENT_INSTANCES_0_PORT=8183"
@@ -239,9 +242,8 @@ services:
     # Application name and encryption
     - "LOG_APP_NAME=kafka-streams-service"
     - "ENCRYPT_KEY=${ENCRYPT_KEY}"
-
-  networks:
-    - ${GLOBAL_NETWORK:-services}
+    networks:
+      - ${GLOBAL_NETWORK:-services}
   analytics-service:
     image: ${GROUP_ID}/analytics.service:${SERVICE_VERSION:-latest}
     ports:

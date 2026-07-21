@@ -1,0 +1,73 @@
+name: Build and Publish Docker Images
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false # never cancel a partway-through image publish
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service:
+          - analytics-service
+          - config-server
+          - discovery-service
+          - elastic-query-service
+          - elastic-query-web-client
+          - elastic-query-web-client-2
+          - gateway-service
+          - kafka-streams-service
+          - kafka-to-elastic-service
+          - reactive-elastic-query-service
+          - reactive-elastic-query-web-client
+          - twitter-to-kafka-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Log in to ${{ env.REGISTRY }}
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Uses each module's spring-boot-maven-plugin build-image goal (Cloud Native
+      # Buildpacks) - same tool used for local image builds, no separate Dockerfile
+      # to keep in sync.
+      - name: Build image with Spring Boot Buildpacks
+        run: mvn -B -ntp -pl ${{ matrix.service }} -am spring-boot:build-image -DskipTests
+
+      - name: Tag and push
+        run: |
+          IMAGE_NAME=$(echo "${{ matrix.service }}" | tr '-' '.')
+          LOCAL_TAG="com.microservices.demo/${IMAGE_NAME}:0.0.1-SNAPSHOT"
+          REMOTE_TAG_SHA="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.service }}:${{ github.sha }}"
+          REMOTE_TAG_LATEST="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.service }}:latest"
+          docker tag "$LOCAL_TAG" "$REMOTE_TAG_SHA"
+          docker tag "$LOCAL_TAG" "$REMOTE_TAG_LATEST"
+          docker push "$REMOTE_TAG_SHA"
+          docker push "$REMOTE_TAG_LATEST"
