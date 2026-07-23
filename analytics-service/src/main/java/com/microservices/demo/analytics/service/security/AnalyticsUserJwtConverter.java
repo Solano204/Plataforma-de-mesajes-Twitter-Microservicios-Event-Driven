@@ -61,7 +61,7 @@ public class AnalyticsUserJwtConverter implements Converter<Jwt, AbstractAuthent
                     .map(authority -> DEFAULT_ROLE_PREFIX + authority.toUpperCase())
                     .collect(Collectors.toList());
         }
-        return Collections.emptyList();
+        return new ArrayList<>();
     }
 
     private Collection<String> getScopes(Jwt jwt) {
@@ -71,6 +71,6 @@ public class AnalyticsUserJwtConverter implements Converter<Jwt, AbstractAuthent
                     .map(authority -> DEFAULT_SCOPE_PREFIX + authority.toUpperCase())
                     .collect(Collectors.toList());
         }
-        return Collections.emptyList();
+        return new ArrayList<>();
     }
 }

@@ -11,6 +11,16 @@
 
     <artifactId>elastic-query-service</artifactId>
 
+    <properties>
+        <!-- Default local image name/tag - matches docker-compose/services.yml's
+             ${GROUP_ID}/elastic.query.service:${SERVICE_VERSION} reference, so
+             `mvn spring-boot:build-image` with no -D override still produces the
+             image compose expects for local dev / integration-test.yml. CI
+             overrides this via -Dspring-boot.build-image.imageName=... to push
+             to ghcr.io instead. -->
+        <spring-boot.build-image.imageName>${project.groupId}/elastic.query.service:${project.version}</spring-boot.build-image.imageName>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.microservices.demo</groupId>
@@ -97,6 +107,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -106,20 +121,13 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <image>
-                        <name>${project.groupId}/elastic.query.service:${project.version}</name>
-                         <env>
+                        <!-- No <name> here - it comes from the spring-boot.build-image.imageName
+                             property above, which -D on the CI command line can still override. -->
+                        <env>
                             <BP_JVM_VERSION>17</BP_JVM_VERSION>
                         </env>
                     </image>
                 </configuration>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>build-image</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

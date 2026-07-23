@@ -1,6 +1,7 @@
 COMPOSE_PATH_SEPARATOR=:
-# COMPOSE_FILE=common.yml:kafka_cluster.yml:elastic_cluster.yml:redis_cluster.yml:monitoring.yml:zipkin.yml:services.yml
-COMPOSE_FILE=common.yml:kafka_cluster.yml:elastic_cluster.yml:redis_cluster.yml:services.yml
+# zipkin.yml is required: kafka-streams-service depends_on zipkin. monitoring.yml
+# (grafana/prometheus) is optional observability tooling, included for consistency.
+COMPOSE_FILE=common.yml:kafka_cluster.yml:elastic_cluster.yml:redis_cluster.yml:monitoring.yml:zipkin.yml:services.yml
 KAFKA_VERSION=7.3.0
 ELASTIC_VERSION=7.17.4
 KEYCLOAK_VERSION=15.0.1
@@ -39,7 +40,8 @@ KAFKA_CONFIG_SCHEMA_REGISTRY_URL=http://localhost:8081
 SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 
 # Kafka Streams
-KAFKA_STREAMS_STATE_FILE_LOCATION=${HOME}/kafka-streaming-state
+# See docker-compose/.env for why this is a relative path, not ${HOME}/...
+KAFKA_STREAMS_STATE_FILE_LOCATION=./kafka-streaming-state
 
 # Eureka Discovery (Local)
 EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE=http://localhost:8761/eureka/

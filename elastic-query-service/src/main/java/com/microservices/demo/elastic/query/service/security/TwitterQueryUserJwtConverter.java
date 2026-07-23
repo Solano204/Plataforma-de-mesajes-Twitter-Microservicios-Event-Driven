@@ -63,7 +63,7 @@ public class TwitterQueryUserJwtConverter implements Converter<Jwt, AbstractAuth
                     .map(authority -> DEFAULT_ROLE_PREFIX + authority.toUpperCase())
                     .collect(Collectors.toList());
         }
-        return Collections.emptyList();
+        return new ArrayList<>();
     }
 
     private Collection<String> getScopes(Jwt jwt) {
@@ -73,6 +73,6 @@ public class TwitterQueryUserJwtConverter implements Converter<Jwt, AbstractAuth
                     .map(authority -> DEFAULT_SCOPE_PREFIX + authority.toUpperCase())
                     .collect(Collectors.toList());
         }
-        return Collections.emptyList();
+        return new ArrayList<>();
     }
 }

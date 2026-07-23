@@ -11,6 +11,16 @@
 
     <artifactId>discovery-service</artifactId>
 
+    <properties>
+        <!-- Default local image name/tag - matches docker-compose/services.yml's
+             ${GROUP_ID}/discovery.service:${SERVICE_VERSION} reference, so
+             `mvn spring-boot:build-image` with no -D override still produces the
+             image compose expects for local dev / integration-test.yml. CI
+             overrides this via -Dspring-boot.build-image.imageName=... to push
+             to ghcr.io instead. -->
+        <spring-boot.build-image.imageName>${project.groupId}/discovery.service:${project.version}</spring-boot.build-image.imageName>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -31,21 +41,13 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <image>
-                        <name>${project.groupId}/discovery.service:${project.version}</name>
-
-                         <env>
+                        <!-- No <name> here - it comes from the spring-boot.build-image.imageName
+                             property above, which -D on the CI command line can still override. -->
+                        <env>
                             <BP_JVM_VERSION>17</BP_JVM_VERSION>
                         </env>
                     </image>
                 </configuration>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>build-image</goal> 
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

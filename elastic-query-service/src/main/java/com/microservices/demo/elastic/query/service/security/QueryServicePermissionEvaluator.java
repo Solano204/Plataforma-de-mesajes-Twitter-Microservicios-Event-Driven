@@ -38,10 +38,18 @@ public class QueryServicePermissionEvaluator implements PermissionEvaluator {
             if (targetDomain == null) {
                 return true;
             }
-            ElasticQueryServiceAnalyticsResponseModel responseBody =
-                    ((ResponseEntity<ElasticQueryServiceAnalyticsResponseModel>) targetDomain).getBody();
+            Object responseBody = ((ResponseEntity<?>) targetDomain).getBody();
             Objects.requireNonNull(responseBody);
-            return postAuthorize(authentication, responseBody.getQueryResponseModels(), permission);
+            List<ElasticQueryServiceResponseModel> queryResponseModels;
+            if (responseBody instanceof ElasticQueryServiceAnalyticsResponseModel) {
+                queryResponseModels = ((ElasticQueryServiceAnalyticsResponseModel) responseBody).getQueryResponseModels();
+            } else if (responseBody instanceof List) {
+                //noinspection unchecked
+                queryResponseModels = (List<ElasticQueryServiceResponseModel>) responseBody;
+            } else {
+                return false;
+            }
+            return postAuthorize(authentication, queryResponseModels, permission);
         }
         return false;
     }
