@@ -59,3 +59,101 @@ jobs:
           name: surefire-reports
           path: '**/target/surefire-reports/*.xml'
           retention-days: 7
+
+  docker-images:
+    name: Build, scan, sign & push Docker image (${{ matrix.service }})
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write      # cosign keyless signing (OIDC)
+      security-events: write  # upload Trivy SARIF to the Security tab
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - analytics-service
+          - config-server
+          - discovery-service
+          - elastic-query-service
+          - elastic-query-web-client
+          - elastic-query-web-client-2
+          - gateway-service
+          - kafka-streams-service
+          - kafka-to-elastic-service
+          - reactive-elastic-query-service
+          - reactive-elastic-query-web-client
+          - twitter-to-kafka-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image name
+        id: image
+        # ghcr.io requires an all-lowercase repository name, but
+        # github.repository_owner preserves the account's actual case
+        # (Solano204) - used directly, every tag/push below would fail with
+        # "repository name must be lowercase".
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${OWNER_LC}/${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+
+      # Uses each module's spring-boot-maven-plugin build-image goal (Cloud Native
+      # Buildpacks) - same tool used for local image builds, no separate Dockerfile
+      # to keep in sync. Each module's pom leaves <image><name> unset so this -D
+      # override actually takes effect (an explicit <name> in the pom would win
+      # over it, building under a name this workflow never looks for).
+      - name: Build image with Spring Boot Buildpacks
+        run: >
+          mvn -B -ntp -pl ${{ matrix.service }} -am spring-boot:build-image -DskipTests
+          -Dspring-boot.build-image.imageName=${{ steps.image.outputs.name }}:${{ github.sha }}
+
+      # exit-code 0: report findings without blocking the pipeline. Flip to
+      # '1' once you've triaged the first run's results and know what's a
+      # real problem vs. an accepted base-image CVE.
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          format: sarif
+          output: trivy-results-${{ matrix.service }}.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload Trivy results to the Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.28.0
+        with:
+          sarif_file: trivy-results-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+
+      - name: Tag :latest and push
+        run: |
+          docker tag "${{ steps.image.outputs.name }}:${{ github.sha }}" "${{ steps.image.outputs.name }}:latest"
+          docker push "${{ steps.image.outputs.name }}:${{ github.sha }}"
+          docker push "${{ steps.image.outputs.name }}:latest"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+
+      - name: Sign image (keyless, via GitHub OIDC)
+        run: |
+          cosign sign --yes ${{ steps.image.outputs.name }}:${{ github.sha }}
+          cosign sign --yes ${{ steps.image.outputs.name }}:latest
