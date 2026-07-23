@@ -115,6 +115,18 @@
                         </env>
                     </image>
                 </configuration>
+                <!-- Binds build-image to a lifecycle phase instead of relying on a bare
+                     CLI goal invocation - the latter runs against every module in the
+                     reactor session (including -am-pulled library deps with no main
+                     class), failing with "Unable to find main class". -->
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>build-image</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

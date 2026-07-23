@@ -88,6 +88,16 @@
                         </env>
                     </image>
                 </configuration>
+                <!-- Phase-bound so a bare "mvn spring-boot:build-image" invocation
+                     doesn't run against every -am-pulled library module too. -->
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>build-image</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

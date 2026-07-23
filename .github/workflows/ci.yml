@@ -120,9 +120,17 @@ jobs:
       # to keep in sync. Each module's pom leaves <image><name> unset so this -D
       # override actually takes effect (an explicit <name> in the pom would win
       # over it, building under a name this workflow never looks for).
+      #
+      # `install`, not the bare `spring-boot:build-image` goal: a directly-invoked
+      # goal runs against every project in the reactor session, including every
+      # -am-pulled library dependency (app-config-data, kafka-admin, ...), which
+      # have no main class and fail the whole build with "Unable to find main
+      # class". Each service's pom now binds build-image to the install phase
+      # instead, so it only actually runs for the one service that has it bound -
+      # library modules just install their jar like normal.
       - name: Build image with Spring Boot Buildpacks
         run: >
-          mvn -B -ntp -pl ${{ matrix.service }} -am spring-boot:build-image -DskipTests
+          mvn -B -ntp -pl ${{ matrix.service }} -am install -DskipTests
           -Dspring-boot.build-image.imageName=${{ steps.image.outputs.name }}:${{ github.sha }}
 
       # exit-code 0: report findings without blocking the pipeline. Flip to

@@ -79,7 +79,18 @@
                         </env>
                     </image>
                 </configuration>
-                <!-- REMOVED automatic execution - build images manually -->
+                <!-- Phase-bound so a bare "mvn spring-boot:build-image" invocation
+                     doesn't run against every -am-pulled library module too - CI's
+                     docker-images job now invokes `install`, not the bare goal, for
+                     every service, so this needs the binding like the rest. -->
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>build-image</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
