@@ -74,7 +74,7 @@
 
 		<micrometer-registry-prometheus.version>1.11.3</micrometer-registry-prometheus.version>
 
-		<logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
+		<logstash-logback-encoder.version>9.0</logstash-logback-encoder.version>
 
 	</properties>
 	<repositories>
