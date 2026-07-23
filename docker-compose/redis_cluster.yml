@@ -5,7 +5,10 @@ services:
     hostname: redis-master
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      # Host 6383, not 6379 - GYM_MOSTER's dev compose binds 6379. Container
+      # still listens on 6379 internally (gateway-service reaches it via the
+      # internal "redis-master"/"redis" hostname, unaffected).
+      - "6383:6379"
     networks:
       - ${GLOBAL_NETWORK:-services}
 

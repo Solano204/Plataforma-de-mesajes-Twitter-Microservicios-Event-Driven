@@ -4,7 +4,9 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"
+      # Host 3011, not 3000 - FURNITURE_STORE and SISTEMA PARTIDOS both bind
+      # 3000 for their own frontends.
+      - "3011:3000"
     volumes:
       - grafana-storage:/var/lib/grafana
     environment:
@@ -17,7 +19,9 @@ services:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
-      - "9090:9090"
+      # Host 9095, not 9090 - FOOD-ORDERIN's own Prometheus is currently
+      # bound there.
+      - "9095:9090"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus

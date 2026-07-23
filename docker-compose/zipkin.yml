@@ -10,7 +10,8 @@ services:
       MYSQL_ROOT_PASSWORD: zipkin
       MYSQL_INITDB_SKIP_TZINFO: 1
     ports:
-      - "3307:3306"
+      # Host 3309, not 3307 - GYM_MOSTER's dev compose binds 3307.
+      - "3309:3306"
     volumes:
       - zipkin-mysql-data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d
@@ -45,7 +46,11 @@ services:
       - MYSQL_USE_SSL=false
       - JAVA_OPTS=-Xms512m -Xmx512m
     ports:
-      - "9411:9411"
+      # Host 9415, not 9411 - GYM_MOSTER's dev compose and FURNITURE_STORE
+      # both bind 9411; FOOD-ORDERIN already moved to 9413 for the same
+      # reason. Every other service here reaches Zipkin via the internal
+      # "zipkin:9411" hostname, unaffected.
+      - "9415:9411"
     restart: unless-stopped
     networks:
       - ${GLOBAL_NETWORK:-services}
