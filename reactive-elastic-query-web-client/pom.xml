@@ -11,6 +11,13 @@
 
     <artifactId>reactive-elastic-query-web-client</artifactId>
 
+    <properties>
+        <!-- Default local image name/tag for `mvn spring-boot:build-image` with
+             no -D override. CI overrides this via
+             -Dspring-boot.build-image.imageName=... to push to ghcr.io instead. -->
+        <spring-boot.build-image.imageName>${project.groupId}/reactive.elastic.query.web.client:${project.version}</spring-boot.build-image.imageName>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.microservices.demo</groupId>
@@ -58,7 +65,8 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <image>
-                        <name>${project.groupId}/reactive.elastic.query.web.client:${project.version}</name>
+                        <!-- No <name> here - it comes from the spring-boot.build-image.imageName
+                             property above, which -D on the CI command line can still override. -->
                         <env>
                             <BP_JVM_VERSION>17</BP_JVM_VERSION>
                         </env>
