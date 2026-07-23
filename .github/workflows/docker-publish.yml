@@ -55,19 +55,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute image name
+        id: image
+        # ghcr.io requires an all-lowercase repository name, but
+        # github.repository_owner preserves the account's actual case
+        # (Solano204) - used directly, every tag/push below would fail with
+        # "repository name must be lowercase" (confirmed on NEOBANK's
+        # identical workflow pattern).
+        run: echo "name=${{ env.REGISTRY }}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+
       # Uses each module's spring-boot-maven-plugin build-image goal (Cloud Native
       # Buildpacks) - same tool used for local image builds, no separate Dockerfile
-      # to keep in sync.
+      # to keep in sync. Each module's pom leaves <image><name> unset so this -D
+      # override actually takes effect (an explicit <name> in the pom would win
+      # over it, building under a name this workflow never looks for).
       - name: Build image with Spring Boot Buildpacks
-        run: mvn -B -ntp -pl ${{ matrix.service }} -am spring-boot:build-image -DskipTests
+        run: >
+          mvn -B -ntp -pl ${{ matrix.service }} -am spring-boot:build-image -DskipTests
+          -Dspring-boot.build-image.imageName=${{ steps.image.outputs.name }}:${{ github.sha }}
 
-      - name: Tag and push
+      - name: Tag :latest and push
         run: |
-          IMAGE_NAME=$(echo "${{ matrix.service }}" | tr '-' '.')
-          LOCAL_TAG="com.microservices.demo/${IMAGE_NAME}:0.0.1-SNAPSHOT"
-          REMOTE_TAG_SHA="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.service }}:${{ github.sha }}"
-          REMOTE_TAG_LATEST="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.service }}:latest"
-          docker tag "$LOCAL_TAG" "$REMOTE_TAG_SHA"
-          docker tag "$LOCAL_TAG" "$REMOTE_TAG_LATEST"
-          docker push "$REMOTE_TAG_SHA"
-          docker push "$REMOTE_TAG_LATEST"
+          docker tag "${{ steps.image.outputs.name }}:${{ github.sha }}" "${{ steps.image.outputs.name }}:latest"
+          docker push "${{ steps.image.outputs.name }}:${{ github.sha }}"
+          docker push "${{ steps.image.outputs.name }}:latest"
